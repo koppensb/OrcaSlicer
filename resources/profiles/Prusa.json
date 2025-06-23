@@ -1217,6 +1217,22 @@
             "sub_path": "filament/Prusa Generic PLA @MINIIS.json"
         },
         {
+            "name": "Prusa Generic PLA Silk @MINIIS 0.25",
+            "sub_path": "filament/Prusa Generic PLA Silk @MINIIS 0.25.json"
+        },
+        {
+            "name": "Prusa Generic PLA Silk @MINIIS 0.6",
+            "sub_path": "filament/Prusa Generic PLA Silk @MINIIS 0.6.json"
+        },
+        {
+            "name": "Prusa Generic PLA Silk @MINIIS 0.8",
+            "sub_path": "filament/Prusa Generic PLA Silk @MINIIS 0.8.json"
+        },
+        {
+            "name": "Prusa Generic PLA Silk @MINIIS",
+            "sub_path": "filament/Prusa Generic PLA Silk @MINIIS.json"
+        },
+        {
             "name": "Prusa Generic PLA-CF",
             "sub_path": "filament/Prusa Generic PLA-CF.json"
         },
@@ -1587,6 +1603,22 @@
         {
             "name": "Prusa Generic PLA @MK3.5",
             "sub_path": "filament/Prusa Generic PLA @MK3.5.json"
+        },
+        {
+            "name": "Prusa Generic PLA Silk @MK3.5 0.25",
+            "sub_path": "filament/Prusa Generic PLA Silk @MK3.5 0.25.json"
+        },
+        {
+            "name": "Prusa Generic PLA Silk @MK3.5 0.6",
+            "sub_path": "filament/Prusa Generic PLA Silk @MK3.5 0.6.json"
+        },
+        {
+            "name": "Prusa Generic PLA Silk @MK3.5 0.8",
+            "sub_path": "filament/Prusa Generic PLA Silk @MK3.5 0.8.json"
+        },
+        {
+            "name": "Prusa Generic PLA Silk @MK3.5",
+            "sub_path": "filament/Prusa Generic PLA Silk @MK3.5.json"
         },
         {
             "name": "Prusa Generic PLA-CF @MK3.5",
