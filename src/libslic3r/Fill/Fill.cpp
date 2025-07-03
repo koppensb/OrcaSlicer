@@ -41,6 +41,8 @@ struct SurfaceFillParams
 
     // FillParams
     float       	density = 0.f;
+    // Infill line multiplier count.
+    int   multiline = 1;
     // Don't adjust spacing to fill the space evenly.
 //    bool        	dont_adjust = false;
     // Length of the infill anchor along the perimeter line.
@@ -88,6 +90,7 @@ struct SurfaceFillParams
 		RETURN_COMPARE_NON_EQUAL(overlap);
 		RETURN_COMPARE_NON_EQUAL(angle);
 		RETURN_COMPARE_NON_EQUAL(density);
+		RETURN_COMPARE_NON_EQUAL(multiline);
 //		RETURN_COMPARE_NON_EQUAL_TYPED(unsigned, dont_adjust);
 		RETURN_COMPARE_NON_EQUAL(anchor_length);
 		RETURN_COMPARE_NON_EQUAL(anchor_length_max);
@@ -117,6 +120,7 @@ struct SurfaceFillParams
 				this->bridge   			== rhs.bridge   		&&
 				this->bridge_angle 		== rhs.bridge_angle		&&
 				this->density   		== rhs.density   		&&
+				this->multiline             == rhs.multiline    &&
 //				this->dont_adjust   	== rhs.dont_adjust 		&&
 				this->anchor_length  	== rhs.anchor_length    &&
 				this->anchor_length_max == rhs.anchor_length_max &&
@@ -647,6 +651,7 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
 		        params.extruder 	 = layerm.region().extruder(extrusion_role);
 		        params.pattern 		 = region_config.sparse_infill_pattern.value;
 		        params.density       = float(region_config.sparse_infill_density);
+                params.multiline     = int(region_config.fill_multiline);
                 params.lattice_angle_1 = region_config.lattice_angle_1;
                 params.lattice_angle_2 = region_config.lattice_angle_2;
                 params.infill_overhang_angle = region_config.infill_overhang_angle;
@@ -657,30 +662,30 @@ std::vector<SurfaceFill> group_fills(const Layer &layer, LockRegionParam &lock_p
                 if (params.pattern == ipCrossZag || params.pattern == ipLockedZag) {
                     params.symmetric_infill_y_axis = region_config.symmetric_infill_y_axis;
                 } else if (params.pattern == ipZigZag) {
-
-                    
                     params.symmetric_infill_y_axis = region_config.symmetric_infill_y_axis;
                 }
 
                 if (surface.is_solid()) {
-		            params.density = 100.f;
-					//FIXME for non-thick bridges, shall we allow a bottom surface pattern?
-					if (surface.is_solid_infill())
-                        params.pattern = region_config.internal_solid_infill_pattern.value;
-                    else if (surface.is_external() && ! is_bridge) {
-                        if(surface.is_top())
+                    if (surface.is_external() && !is_bridge) {
+                        if (surface.is_top()) {
                             params.pattern = region_config.top_surface_pattern.value;
-                        else
+                            params.density = float(region_config.top_surface_density);
+                        } else { // Surface is bottom
                             params.pattern = region_config.bottom_surface_pattern.value;
-                    }
-                    else {
-                        if(region_config.top_surface_pattern == ipMonotonic || region_config.top_surface_pattern == ipMonotonicLine)
+                            params.density = float(region_config.bottom_surface_density);
+                        }
+                    } else if (surface.is_solid_infill()) {
+                        params.pattern = region_config.internal_solid_infill_pattern.value;
+                        params.density = 100.f;
+                    } else {
+                        if (region_config.top_surface_pattern == ipMonotonic || region_config.top_surface_pattern == ipMonotonicLine)
                             params.pattern = ipMonotonic;
                         else
                             params.pattern = ipRectilinear;
+                        params.density = 100.f;
                     }
-		        } else if (params.density <= 0)
-		            continue;
+                } else if (params.density <= 0)
+                    continue;
 
 				params.extrusion_role = erInternalInfill;
                 if (is_bridge) {
@@ -1023,13 +1028,14 @@ void Layer::make_fills(FillAdaptive::Octree* adaptive_fill_octree, FillAdaptive:
         // apply half spacing using this flow's own spacing and generate infill
         FillParams params;
         params.density 		     = float(0.01 * surface_fill.params.density);
+        params.multiline         = surface_fill.params.multiline;
 		params.dont_adjust		 = false; //  surface_fill.params.dont_adjust;
         params.anchor_length     = surface_fill.params.anchor_length;
 		params.anchor_length_max = surface_fill.params.anchor_length_max;
 		params.resolution        = resolution;
         params.use_arachne       = surface_fill.params.pattern == ipConcentric || surface_fill.params.pattern == ipConcentricInternal;
         params.layer_height      = layerm->layer()->height;
-        params.lattice_angle_1   = surface_fill.params.lattice_angle_1; 
+        params.lattice_angle_1   = surface_fill.params.lattice_angle_1;
         params.lattice_angle_2   = surface_fill.params.lattice_angle_2;
         params.infill_overhang_angle   = surface_fill.params.infill_overhang_angle;
 
@@ -1041,7 +1047,7 @@ void Layer::make_fills(FillAdaptive::Octree* adaptive_fill_octree, FillAdaptive:
         auto &region_config = layerm->region().config();
 
         ConfigOptionFloats rotate_angles;
-        rotate_angles.deserialize( surface_fill.params.extrusion_role == erInternalInfill  ? region_config.sparse_infill_rotate_template.value : region_config.solid_infill_rotate_template.value);  
+        rotate_angles.deserialize( surface_fill.params.extrusion_role == erInternalInfill  ? region_config.sparse_infill_rotate_template.value : region_config.solid_infill_rotate_template.value);
         auto rotate_angle_idx = f->layer_id % rotate_angles.size();
         f->rotate_angle = Geometry::deg2rad(rotate_angles.values[rotate_angle_idx]);
 
@@ -1149,7 +1155,7 @@ Polylines Layer::generate_sparse_infill_polylines_for_anchoring(FillAdaptive::Oc
         case ipTpmsD:
         case ipHilbertCurve:
         case ipArchimedeanChords:
-        case ipOctagramSpiral: 
+        case ipOctagramSpiral:
         case ipZigZag:
         case ipCrossZag:
 		case ipLockedZag: break;
@@ -1196,9 +1202,10 @@ Polylines Layer::generate_sparse_infill_polylines_for_anchoring(FillAdaptive::Oc
         params.resolution        = resolution;
         params.use_arachne       = false;
         params.layer_height      = layerm.layer()->height;
-        params.lattice_angle_1   = surface_fill.params.lattice_angle_1; 
-        params.lattice_angle_2   = surface_fill.params.lattice_angle_2; 
+        params.lattice_angle_1   = surface_fill.params.lattice_angle_1;
+        params.lattice_angle_2   = surface_fill.params.lattice_angle_2;
         params.infill_overhang_angle   = surface_fill.params.infill_overhang_angle;
+        params.multiline         = surface_fill.params.multiline;
 
         for (ExPolygon &expoly : surface_fill.expolygons) {
             // Spacing is modified by the filler to indicate adjustments. Reset it for each expolygon.
